@@ -45,7 +45,7 @@ EOH
 usage() unless $ARGV[0];
 
 eval {
-	my $module = new MiniPAN $ARGV[0];
+	my $module = MiniPAN->new($ARGV[0]);
 	$module->fetch();
 	my @deps = $module->config();
 	system("$0 $_") foreach (@deps);
