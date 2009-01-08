@@ -6,6 +6,11 @@ use warnings;
 use Spiffy -Base;
 use Carp;
 use File::Basename;
+use File::Path qw(rmtree);
+use LWP::UserAgent;
+use IO::Uncompress::Gunzip qw(gunzip $GunzipError);
+use Archive::Tar;
+
 
 =head1 NAME
 
@@ -13,11 +18,11 @@ MiniPAN - A minimalistic installer of CPAN modules for the iPhone
 
 =head1 VERSION
 
-Version 0.01
+Version 0.02
 
 =cut
 
-our $VERSION     = '0.01';
+our $VERSION     = '0.02';
 our $CPAN_MIRROR = 'ftp://cpan.catalyst.net.nz/pub/CPAN/modules/';
 our $BUILD_DIR   = $ENV{'HOME'} . '/.minipan/';
 our $MOD_LIST    = '02packages.details.txt';
@@ -26,7 +31,7 @@ our $MOD_LIST    = '02packages.details.txt';
 
 	use MiniPAN;
 
-	my $module = new MiniPAN('Some::Module');
+	my $module = MiniPAN->new('Some::Module');
 	$module->fetch();
 	my @deps = $module->config();
 	$module->install();
@@ -35,7 +40,7 @@ our $MOD_LIST    = '02packages.details.txt';
 
 =head2 new
 
-	my $module = new MiniPAN('Some::Module');
+	my $module = MiniPAN->new('Some::Module');
 
 Creates a new MiniPAN object, takes the module name as a single argument.
 
@@ -48,7 +53,8 @@ sub new($$) {
 	
 	my $self = {
 		module     => $module,
-		module_dir => $BUILD_DIR . _get_module_dir($module),
+		mirror     => $CPAN_MIRROR,
+		local_path => $BUILD_DIR . _get_local_path($module),
 	};
 	bless $self, $class;
 	
@@ -64,31 +70,36 @@ Fetches and extracts the module source from CPAN mirror.
 =cut
 
 sub fetch {
-	$self->{'url'} = $CPAN_MIRROR
-		. 'by-authors/id/'
-		. $self->_get_module_path($self->{'module'}
-	);
+	$self->{'server_path'} = 'by-authors/id/'
+		. $self->_get_server_path($self->{'module'});
 
-	unless (-d $self->{'module_dir'}) {
+	unless (-d $self->{'local_path'}) {
 		$self->_print('creating temp module dir');
-		mkdir($self->{'module_dir'})
-			or croak("fetch: could not mkdir `" . $self->{'module_dir'} . "': $!\n");
+		mkdir($self->{'local_path'})
+			or croak("fetch: could not mkdir `" . $self->{'local_path'} . "': $!\n");
 	}
-	chdir($self->{'module_dir'})
-		or croak("fetch: could not chdir to `" . $self->{'module_dir'} . "': $!\n");
+	chdir($self->{'local_path'})
+		or croak("fetch: could not chdir to `" . $self->{'local_path'} . "': $!\n");
 
-	my ($filename, undef, $suffix) = fileparse($self->{'url'}, (".tar.gz"));
+	my ($filename, undef, $suffix) = fileparse($self->{'server_path'}, (".tar.gz"));
 	if (-f $filename . $suffix) {
 		$self->_print('source already downloaded');
 	}
 	else {
-		$self->_print('fetching module source from: ' . $self->{'url'});
-		system("lwp-download '" . $self->{'url'} . "' >/dev/null 2>&1");
+		$self->_print('fetching module source from: ' . $self->{'server_path'});
+		$self->_download($self->{'server_path'}, $filename.$suffix);
 	}
+	
 	$self->_print('extracting source');
-	system("tar xzf " . $filename . $suffix);
+	
+	# remove old extracted sources
+	rmtree($filename) if (-d $filename);
+	
+	my $tar = Archive::Tar->new();
+	$tar->read($filename.$suffix, undef,{ extract => 1 })
+		or croak("could not open/read `$filename$suffix': " . $tar->error . "\n");
 
-	$self->{'src_dir'} = $self->{'module_dir'} . "/$filename";
+	$self->{'src_dir'} = $self->{'local_path'} . "/$filename";
 }
 
 =head2 config
@@ -115,7 +126,7 @@ sub config {
 			grep(/Warning: prerequisite/om, `perl Makefile.PL --skipdeps 2>&1`);
 	}
 
-	$self->_print("required dependencies: " . join(", ", @deps));
+	$self->_print("required dependencies: " . join(", ", @deps)) if (@deps);
 
 	return @deps;
 }
@@ -138,16 +149,32 @@ sub install {
 
 	eval {
 		$self->_print("building");
-		system($build_script);
+		system($build_script) == 0
+			or die("build failed, see error(s) above\n");
 		$self->_print("testing");
-		system("$build_script test");
+		system($build_script, 'test') == 0
+			or die("testing failed, see error(s) above\n");
 		$self->_print("installing");
-		system("sudo $build_script install");
+		#system('sudo', $build_script, 'install') == 0
+		#	or die("install failed, see error(s) above\n");
 	};
-	$self->_print("there was an error: $@") and exit 1 if ($@);
+	$self->_print($@) and exit 1 if ($@);
+	
 	chdir($BUILD_DIR) or croak("clean: could not chdir to `$BUILD_DIR': $!\n");
-	system('rm -rf ' . $self->{'src_dir'});
+	rmtree($self->{'src_dir'});
 	$self->_print("temporary build dir removed");
+}
+
+sub _download {
+	my ($url, $file) = @_;
+	
+	my $ua = LWP::UserAgent->new(agent => "MiniPan $VERSION");
+	my $response = $ua->request(
+		HTTP::Request->new(GET => $self->{'mirror'} . $url),
+		$file,
+	);
+	croak("could not download `$file': " . $response->status_line)
+		unless $response->is_success;
 }
 
 sub _get_module_name($) {
@@ -162,29 +189,31 @@ sub _get_module_name($) {
 	return $module;
 }
 
-sub _get_module_dir($) {
+sub _get_local_path($) {
 	my ($dir) = @_;
 	$dir =~ s~::~-~og;
 	return $dir
 }
 
-sub _fetch_module_list() {
+sub _fetch_module_list {
 	mkdir($BUILD_DIR) or die("coud not mkdir `$BUILD_DIR': $!\n")
 		unless (-d $BUILD_DIR);
 
 	chdir($BUILD_DIR) or die("could not chdir to `$BUILD_DIR': $!\n");
 	
 	unless (-f $MOD_LIST) {
-		print "fetching module list from $CPAN_MIRROR$MOD_LIST.gz\n";
-		system("lwp-download $CPAN_MIRROR$MOD_LIST.gz >/dev/null 2>&1");
-		system("gunzip $MOD_LIST.gz");
+		print 'fetching module list from ' . $self->{'mirror'} . $MOD_LIST . ".gz\n";
+		$self->_download("$MOD_LIST.gz", "$MOD_LIST.gz");
+		gunzip "$MOD_LIST.gz" => $MOD_LIST
+			or croak("gunzip failed: $GunzipError\n");
+		unlink("$MOD_LIST.gz");
 	}
 }
 
-sub _get_module_path {
+sub _get_server_path {
 	my $path;
 	
-	_fetch_module_list();
+	$self->_fetch_module_list();
 
 	open(LIST, "< $BUILD_DIR$MOD_LIST")
 		or croak("cannot open package list `$BUILD_DIR$MOD_LIST': $!\n");
@@ -214,10 +243,15 @@ automatically be notified of progress on your bug as I make changes.
 
 =head1 TODO
 
-* (!) implement a much nicer way of recursive dependency installation
-* refetch module list if it is older than a certain period
-* use perl modules for fetching and uncompressing
-* more verbosity via flag
+=over 4
+
+=item * (!) implement a much nicer way of recursive dependency installation
+
+=item * use Term::ANSIColor
+
+=item * refetch module list if it is older than a certain period
+
+=item * more verbosity via flag
 
 =head1 SEE ALSO
 
