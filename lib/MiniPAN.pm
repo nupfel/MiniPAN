@@ -155,8 +155,8 @@ sub install {
 		system($build_script, 'test') == 0
 			or die("testing failed, see error(s) above\n");
 		$self->_print("installing");
-		#system('sudo', $build_script, 'install') == 0
-		#	or die("install failed, see error(s) above\n");
+		system('sudo', $build_script, 'install') == 0
+			or die("install failed, see error(s) above\n");
 	};
 	$self->_print($@) and exit 1 if ($@);
 	
@@ -223,7 +223,7 @@ sub _get_server_path {
 	}
 	close(LIST);
 
-	croak($self->{'module'} . "does not exist on CPAN\n") unless ($path);
+	croak($self->{'module'} . " does not exist on CPAN\n") unless ($path);
 
 	$self->_print("path is: $path");
 
@@ -252,6 +252,8 @@ automatically be notified of progress on your bug as I make changes.
 =item * refetch module list if it is older than a certain period
 
 =item * more verbosity via flag
+
+=back
 
 =head1 SEE ALSO
 
@@ -295,7 +297,6 @@ Tobias Kirschstein, C<< <mail at lev.geek.nz> >>
 Copyright 2008 Tobias Kirschstein, all rights reserved.
 
 This program is released under the following license: BSD
-
 
 =cut
 
