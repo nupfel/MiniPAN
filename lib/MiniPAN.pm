@@ -18,11 +18,11 @@ MiniPAN - A minimalistic installer of CPAN modules for the iPhone
 
 =head1 VERSION
 
-Version 0.02
+Version 0.03
 
 =cut
 
-our $VERSION     = '0.02';
+our $VERSION     = '0.03';
 our $CPAN_MIRROR = 'ftp://cpan.catalyst.net.nz/pub/CPAN/modules/';
 our $BUILD_DIR   = $ENV{'HOME'} . '/.minipan/';
 our $MOD_LIST    = '02packages.details.txt';
@@ -57,6 +57,9 @@ sub new($$) {
 		local_path => $BUILD_DIR . _get_local_path($module),
 	};
 	bless $self, $class;
+	
+	mkdir($BUILD_DIR) or die("coud not mkdir `$BUILD_DIR': $!\n")
+		unless (-d $BUILD_DIR);
 	
 	return $self;
 }
@@ -196,9 +199,6 @@ sub _get_local_path($) {
 }
 
 sub _fetch_module_list {
-	mkdir($BUILD_DIR) or die("coud not mkdir `$BUILD_DIR': $!\n")
-		unless (-d $BUILD_DIR);
-
 	chdir($BUILD_DIR) or die("could not chdir to `$BUILD_DIR': $!\n");
 	
 	unless (-f $MOD_LIST) {

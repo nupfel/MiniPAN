@@ -1,5 +1,8 @@
 Revision history for MiniPAN
 
+0.03    2009-01-09 03:15
+	- minor fixes
+
 0.02    2009-01-09 00:28
         - use perl modules instead of system() for downloading and extracting
 	  sources
@@ -10,4 +13,4 @@ Revision history for MiniPAN
 	  * File::Path
 
 0.01    2009-01-03 22:01
-        - First version, released on an unsuspecting world.
+	- First version, released on an unsuspecting world.
