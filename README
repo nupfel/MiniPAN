@@ -21,6 +21,7 @@ http://coredev.nl/
 following packages are also required:
 
 - sudo
+- make and anything build related (build-essential under debian)
 - OpenSSH (for remote login)
 
 
@@ -28,10 +29,10 @@ INSTALLATION
 
 To install this module, run the following commands:
 
-	perl Build.PL
-	./Build
-	./Build test
-	./Build install
+	perl Makefile.PL
+	make
+	make test
+	make install
 
 SUPPORT AND DOCUMENTATION
 
