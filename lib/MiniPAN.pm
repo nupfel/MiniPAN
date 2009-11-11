@@ -1,5 +1,6 @@
 package MiniPAN;
 
+use 5.005;
 use strict;
 use warnings;
 
@@ -18,12 +19,12 @@ MiniPAN - A minimalistic installer of CPAN modules for the iPhone
 
 =head1 VERSION
 
-Version 0.03
+Version 0.04
 
 =cut
 
-our $VERSION     = '0.03';
-our $CPAN_MIRROR = 'ftp://cpan.catalyst.net.nz/pub/CPAN/modules/';
+our $VERSION     = '0.04';
+our $CPAN_MIRROR = 'http://cpan.catalyst.net.nz/pub/CPAN/modules/';
 our $BUILD_DIR   = $ENV{'HOME'} . '/.minipan/';
 our $MOD_LIST    = '02packages.details.txt';
 
@@ -48,19 +49,19 @@ Creates a new MiniPAN object, takes the module name as a single argument.
 
 sub new($$) {
 	my ($class, $module) = @_;
-	
+
 	$module = _get_module_name($module);
-	
+
 	my $self = {
 		module     => $module,
 		mirror     => $CPAN_MIRROR,
 		local_path => $BUILD_DIR . _get_local_path($module),
 	};
 	bless $self, $class;
-	
+
 	mkdir($BUILD_DIR) or die("coud not mkdir `$BUILD_DIR': $!\n")
 		unless (-d $BUILD_DIR);
-	
+
 	return $self;
 }
 
@@ -92,12 +93,12 @@ sub fetch {
 		$self->_print('fetching module source from: ' . $self->{'server_path'});
 		$self->_download($self->{'server_path'}, $filename.$suffix);
 	}
-	
+
 	$self->_print('extracting source');
-	
+
 	# remove old extracted sources
 	rmtree($filename) if (-d $filename);
-	
+
 	my $tar = Archive::Tar->new();
 	$tar->read($filename.$suffix, undef,{ extract => 1 })
 		or croak("could not open/read `$filename$suffix': " . $tar->error . "\n");
@@ -126,7 +127,7 @@ sub config {
 	}
 	else {
 		@deps = map { [ split(/\s+/o, $_) ]->[2] }
-			grep(/Warning: prerequisite/om, `perl Makefile.PL --skipdeps 2>&1`);
+			grep(/Warning: prerequisite/om, `perl Makefile.PL --skipdeps 2>&1 || perl Makefile.PL 2>&1`);
 	}
 
 	$self->_print("required dependencies: " . join(", ", @deps)) if (@deps);
@@ -162,7 +163,7 @@ sub install {
 			or die("install failed, see error(s) above\n");
 	};
 	$self->_print($@) and exit 1 if ($@);
-	
+
 	chdir($BUILD_DIR) or croak("clean: could not chdir to `$BUILD_DIR': $!\n");
 	rmtree($self->{'src_dir'});
 	$self->_print("temporary build dir removed");
@@ -170,7 +171,7 @@ sub install {
 
 sub _download {
 	my ($url, $file) = @_;
-	
+
 	my $ua = LWP::UserAgent->new(agent => "MiniPan $VERSION");
 	my $response = $ua->request(
 		HTTP::Request->new(GET => $self->{'mirror'} . $url),
@@ -185,7 +186,7 @@ sub _get_module_name($) {
 
 	$module =~ s~/~::~og;
 	$module =~ s~\.pm$~~o;
-	
+
 	croak("argument is not a module: $module\n")
 		if ($module =~ /[^a-zA-Z:]/o);
 
@@ -200,7 +201,7 @@ sub _get_local_path($) {
 
 sub _fetch_module_list {
 	chdir($BUILD_DIR) or die("could not chdir to `$BUILD_DIR': $!\n");
-	
+
 	unless (-f $MOD_LIST) {
 		print 'fetching module list from ' . $self->{'mirror'} . $MOD_LIST . ".gz\n";
 		$self->_download("$MOD_LIST.gz", "$MOD_LIST.gz");
@@ -212,7 +213,7 @@ sub _fetch_module_list {
 
 sub _get_server_path {
 	my $path;
-	
+
 	$self->_fetch_module_list();
 
 	open(LIST, "< $BUILD_DIR$MOD_LIST")

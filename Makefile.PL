@@ -12,6 +12,11 @@ requires 'Spiffy';
 
 build_requires 'Test::More';
 
+requires_external_bin 'sudo';
+requires_external_bin 'make';
+
+install_script 'minipan';
+
 auto_install;
 
 WriteAll;
