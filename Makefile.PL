@@ -14,6 +14,7 @@ build_requires 'Test::More';
 
 requires_external_bin 'sudo';
 requires_external_bin 'make';
+requires_external_bin 'yes';
 
 install_script 'minipan';
 

@@ -123,11 +123,11 @@ sub config {
 
 	if (-f 'Build.PL') {
 		@deps = map { [ split(/\s+/o, $_) ]->[3] }
-			grep(/ - ERROR: /om, `perl Build.PL 2>&1`);
+			grep(/ - ERROR: /om, `yes | perl Build.PL 2>&1`);
 	}
 	else {
 		@deps = map { [ split(/\s+/o, $_) ]->[2] }
-			grep(/Warning: prerequisite/om, `perl Makefile.PL --skipdeps 2>&1 || perl Makefile.PL 2>&1`);
+			grep(/Warning: prerequisite/om, `yes | perl Makefile.PL --skipdeps 2>&1 || yes | perl Makefile.PL 2>&1`);
 	}
 
 	$self->_print("required dependencies: " . join(", ", @deps)) if (@deps);
@@ -188,7 +188,7 @@ sub _get_module_name($) {
 	$module =~ s~\.pm$~~o;
 
 	croak("argument is not a module: $module\n")
-		if ($module =~ /[^a-zA-Z:]/o);
+		unless ($module =~ /^\w+(::\w+)*$/o);
 
 	return $module;
 }
