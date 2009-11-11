@@ -1,15 +1,5 @@
 Revision history for MiniPAN
 
-0.04 - Wed Nov 11 18:29:08 2009
-
-0.04    2009-11-11 03:50
-    - moved to Module::Install
-    - use http cpan mirror instead of ftp which is less painfull usually
-    - added dependenciy to external binaries (make, sudo)
-    - install minipan script properly into $PATH
-    - added support for Makefile.PL that doesnt support --skipdeps
-      (like WWW::Mechanize apparently)
-
 0.03    2009-01-09 03:15
     - minor fixes
 
