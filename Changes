@@ -1,5 +1,7 @@
 Revision history for MiniPAN
 
+0.04 - Wed Nov 11 18:29:08 2009
+
 0.04    2009-11-11 03:50
     - moved to Module::Install
     - use http cpan mirror instead of ftp which is less painfull usually
