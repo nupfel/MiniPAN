@@ -123,11 +123,11 @@ sub config {
 
 	if (-f 'Build.PL') {
 		@deps = map { [ split(/\s+/o, $_) ]->[3] }
-			grep(/ - ERROR: /om, `yes | perl Build.PL 2>&1`);
+			grep(/ - ERROR: /om, `yes "\n" | perl Build.PL 2>&1`);
 	}
 	else {
 		@deps = map { [ split(/\s+/o, $_) ]->[2] }
-			grep(/Warning: prerequisite/om, `yes | perl Makefile.PL --skipdeps 2>&1 || yes | perl Makefile.PL 2>&1`);
+			grep(/Warning: prerequisite/om, `yes "\n" | perl Makefile.PL --skipdeps 2>&1 || yes "\n" | perl Makefile.PL 2>&1`);
 	}
 
 	$self->_print("required dependencies: " . join(", ", @deps)) if (@deps);
